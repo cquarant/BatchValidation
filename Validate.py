@@ -44,6 +44,7 @@ pe_peak = 0.511 #MeV
 
 #--- Output dir
 plotdir = "plot"
+os.system(f"mkdir {plotdir}")
 
 #--- Options
 parser = argparse.ArgumentParser(usage="python3 Validate.py --user mtdloacsv")

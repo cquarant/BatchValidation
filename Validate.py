@@ -35,8 +35,6 @@ singleBarGalaxyNameId = "Run"
 arrayGalaxyNameId = "Run"
 barInArrayGalaxyNameId = "Run"
 
-singleBarId = "FK00002"
-arrayId = "FK00001"
 barInArrayId = "-"
 
 eff_PMT = 0.25
@@ -68,16 +66,16 @@ if(args.noDumpDB==False):
     # Parts
 
     QUERYSINGLEBARS = (
-        "select p.BARCODE,p.KIND_OF_PART "
+        "select p.BARCODE,p.KIND_OF_PART,p.BATCH_NUMBER "
         "from mtd_cmsr.parts p "
-        "where p.LOCATION_ID = 3000 and p.KIND_OF_PART like 'singleCrystal%'"
+        "where p.LOCATION_ID = 4980 and p.KIND_OF_PART like 'singleCrystal%'"
     )
     print ("\nQUERYSINGLEBARS: " + QUERYSINGLEBARS)
 
     QUERYARRAYS = (
-        "select p.BARCODE,p.KIND_OF_PART "
-        "from mtd_cmsr.parts p "
-        "where p.LOCATION_ID = 3000 and p.KIND_OF_PART like 'LYSOMatrix%'"
+        "select p.BARCODE,p.KIND_OF_PART,p.BATCH_NUMBER "
+        " from mtd_cmsr.parts p "
+        "where p.LOCATION_ID = 4980 and p.KIND_OF_PART like 'LYSOMatrix%'"
     )
     print ("\nQUERYARRAYS: " + QUERYARRAYS)
 
@@ -95,7 +93,7 @@ if(args.noDumpDB==False):
     "left join mtd_cmsr.c1400 c1 on c1.PART_BARCODE = p.BARCODE "
     "left join mtd_cmsr.datasets ds on (ds.ID = c1.CONDITION_DATA_SET_ID) "
     "left join mtd_cmsr.runs r on (r.ID = ds.RUN_ID) "
-    "where p.LOCATION_ID = 3000"
+    "where p.LOCATION_ID = 4980"
     )
     print ("\nQUERYTOFPET: " + QUERYTOFPET)
     
@@ -106,7 +104,7 @@ if(args.noDumpDB==False):
     "left join mtd_cmsr.c1420 c2 on c2.PART_BARCODE = p.BARCODE "
     "left join mtd_cmsr.datasets ds on (ds.ID = c2.CONDITION_DATA_SET_ID) "
     "left join mtd_cmsr.runs r on (r.ID = ds.RUN_ID) "
-    "where p.LOCATION_ID = 3000"
+    "where p.LOCATION_ID = 4980"
     )
     print ("\nQUERYPMT: " + QUERYPMT)
 
@@ -120,7 +118,7 @@ if(args.noDumpDB==False):
     "left join mtd_cmsr.c3400 c3 on c3.PART_BARCODE = p.BARCODE "
     "left join mtd_cmsr.datasets ds on (ds.ID = c3.CONDITION_DATA_SET_ID) "
     "left join mtd_cmsr.runs r on (r.ID = ds.RUN_ID) "
-    "where p.LOCATION_ID = 3000"
+    "where p.LOCATION_ID = 4980"
     )
     print ("\nQUERYGALAXY: " + QUERYGALAXY)
 
@@ -158,6 +156,7 @@ df_SINGLEBARS.dropna(
 
 df_ARRAYS = pd.read_csv(file_ARRAYS)
 df_ARRAYS = df_ARRAYS.sort_values(by=['BARCODE'])
+df_ARRAYS['BARCODE'] = df_ARRAYS['BARCODE'].astype(str)
 df_ARRAYS.dropna(
     axis=0,
     how='all',
@@ -171,23 +170,6 @@ df_ARRAYS.dropna(
 # Measurements
     
 #---------
-#-- TOFPET
-#---------
-df_TOFPET = pd.read_csv(file_TOFPET)
-df_TOFPET = df_TOFPET.sort_values(by=['PART_BARCODE'])
-df_TOFPET.dropna(
-    axis=0,
-    how='all',
-    subset=None,
-    inplace=True
-)
-
-#- TOFPET cleaning
-df_TOFPET = df_TOFPET[df_TOFPET['NAME'].str.match(tofpetNameId)]
-#print ( len(df_TOFPET.index) )
-#print ( df_TOFPET )
-
-#---------
 #-- PMT
 #---------
 df_PMT = pd.read_csv(file_PMT)
@@ -199,9 +181,26 @@ df_PMT.dropna(
     inplace=True
 )
 #- PMT cleaning
-df_PMT = df_PMT[df_PMT['NAME'].str.match(pmtNameId)]
+# df_PMT = df_PMT[df_PMT['NAME'].str.match(pmtNameId)]
 #print ( len(df_PMT.index) )
 #print ( df_PMT )
+
+
+#---------
+#-- TOFPET
+#---------
+df_TOFPET = pd.read_csv(file_TOFPET)
+df_TOFPET = df_TOFPET.sort_values(by=['PART_BARCODE'])
+df_TOFPET.dropna(
+    axis=0,
+    how='all',
+    subset=None,
+    inplace=True
+)
+#- TOFPET cleaning
+# df_TOFPET = df_TOFPET[df_TOFPET['NAME'].str.match(tofpetNameId)]
+#print ( len(df_TOFPET.index) )
+#print ( df_TOFPET )
 
 #---------
 #-- GALAXY
@@ -245,9 +244,9 @@ latex.SetTextAlign(13)
 #-----------  Dataframes for single bars validation
 #---------------------------------------------------------
 
-# GALAXY for single bars
-df_GALAXY_SINGLEBAR = pd.merge( df_SINGLEBARS, df_GALAXY, how='inner', left_on='BARCODE', right_on='PART_BARCODE')
-df_GALAXY_SINGLEBAR = df_GALAXY_SINGLEBAR[df_GALAXY_SINGLEBAR['NAME'].str.match(singleBarGalaxyNameId)] # cleaning
+# # GALAXY for single bars
+# df_GALAXY_SINGLEBAR = pd.merge( df_SINGLEBARS, df_GALAXY, how='inner', left_on='BARCODE', right_on='PART_BARCODE')
+# df_GALAXY_SINGLEBAR = df_GALAXY_SINGLEBAR[df_GALAXY_SINGLEBAR['NAME'].str.match(singleBarGalaxyNameId)] # cleaning
  
 # PMT for single bars
 df_PMT = pd.merge( df_SINGLEBARS, df_PMT, how='inner', left_on='BARCODE', right_on='PART_BARCODE')
@@ -261,14 +260,14 @@ df_PMT['LOoverDT_RSTD']  = df_PMT['LOoverDT'].std()/df_PMT['LOoverDT'].mean()*10
 #-----------  Dataframes for array validation
 #---------------------------------------------------------
 
-# Dataframe with array types + galaxy measurements for whole array
-df_GALAXY_ARRAY = pd.merge( df_ARRAYS, df_GALAXY, how='inner', left_on='BARCODE', right_on='PART_BARCODE')
-df_GALAXY_ARRAY['LMAXVAR'] = df_GALAXY_ARRAY[['LMAXVAR_LS','LMAXVAR_LN']].max(axis=1)
+# # Dataframe with array types + galaxy measurements for whole array
+# df_GALAXY_ARRAY = pd.merge( df_ARRAYS, df_GALAXY, how='inner', left_on='BARCODE', right_on='PART_BARCODE')
+# df_GALAXY_ARRAY['LMAXVAR'] = df_GALAXY_ARRAY[['LMAXVAR_LS','LMAXVAR_LN']].max(axis=1)
 
-# Dataframe with galaxy measurements for bars in arrays
-df_GALAXY_BARINARRAY = df_GALAXY[df_GALAXY['PART_BARCODE'].str.contains(barInArrayId)]
-df_GALAXY_BARINARRAY['PARENT_ARRAY'] = list(list(zip(*df_GALAXY_BARINARRAY['PART_BARCODE'].str.split("-")))[0])
-df_GALAXY_BARINARRAY = df_GALAXY_BARINARRAY.merge( df_ARRAYS, how='left', left_on='PARENT_ARRAY', right_on='BARCODE')
+# # Dataframe with galaxy measurements for bars in arrays
+# df_GALAXY_BARINARRAY = df_GALAXY[df_GALAXY['PART_BARCODE'].str.contains(barInArrayId)]
+# df_GALAXY_BARINARRAY['PARENT_ARRAY'] = list(list(zip(*df_GALAXY_BARINARRAY['PART_BARCODE'].str.split("-")))[0])
+# df_GALAXY_BARINARRAY = df_GALAXY_BARINARRAY.merge( df_ARRAYS, how='left', left_on='PARENT_ARRAY', right_on='BARCODE')
 
 # Dataframe with optical properties of array (average and std. dev. for bars 1-14 for each array)
 df_TOFPET_ARRAY = df_TOFPET.copy()
@@ -278,8 +277,19 @@ df_TOFPET_ARRAY['XT'] = (df_TOFPET_ARRAY['XTLEFT'] + df_TOFPET_ARRAY['XTRIGHT'])
 
 df_TOFPET_ARRAY_RUN  = df_TOFPET_ARRAY[['PARENT_ARRAY','NAME']].drop_duplicates()
 df_TOFPET_ARRAY_MEAN = df_TOFPET_ARRAY.groupby(['PARENT_ARRAY'], as_index=False).mean(numeric_only=True)
+#df_TOFPET_ARRAY_RSTD = df_TOFPET_ARRAY.groupby(['PARENT_ARRAY'], as_index=False).apply(lambda x: np.std(x) / np.mean(x))
+
+df_TOFPET_ARRAY_STD = df_TOFPET_ARRAY.groupby(['PARENT_ARRAY'], as_index=False).std(numeric_only=True)
+
+df_TOFPET_ARRAY_RSTD = df_TOFPET_ARRAY_MEAN.copy()
+
+for col in df_TOFPET_ARRAY_RSTD.columns:
+    if 'PARENT_ARRAY' in col:
+        continue
+    df_TOFPET_ARRAY_RSTD[ col ] = df_TOFPET_ARRAY_STD[col] / df_TOFPET_ARRAY_MEAN[col] 
+
 df_TOFPET_ARRAY_MEAN = df_TOFPET_ARRAY_MEAN.add_suffix('_MEAN')
-df_TOFPET_ARRAY_RSTD = df_TOFPET_ARRAY.groupby(['PARENT_ARRAY'], as_index=False).apply(lambda x: np.std(x) / np.mean(x))
+df_TOFPET_ARRAY_STD = df_TOFPET_ARRAY_RSTD.add_suffix('_STD')
 df_TOFPET_ARRAY_RSTD = df_TOFPET_ARRAY_RSTD.add_suffix('_RSTD')
 
 df_TOFPET_ARRAY = df_TOFPET_ARRAY_MEAN.merge( df_TOFPET_ARRAY_RSTD, how='inner', left_on='PARENT_ARRAY_MEAN', right_on='PARENT_ARRAY_RSTD')
@@ -291,6 +301,7 @@ df_TOFPET_ARRAY[['LY_RSTD','SIGMA_T_RSTD','XT_RSTD']] = df_TOFPET_ARRAY[['LY_RST
 #Dataframe for Optical measurements of Bar in Arrays
 df_TOFPET_BARINARRAY = df_TOFPET.copy()
 df_TOFPET_BARINARRAY['PARENT_ARRAY'] = list(list(zip(*df_TOFPET_BARINARRAY['PART_BARCODE'].str.split("-")))[0])
+#df_TOFPET_BARINARRAY = df_TOFPET_BARINARRAY.merge( df_ARRAYS, how='left', left_index=True, right_index=True)
 df_TOFPET_BARINARRAY = df_TOFPET_BARINARRAY.merge( df_ARRAYS, how='left', left_on='PARENT_ARRAY', right_on='BARCODE')
 df_TOFPET_BARINARRAY = df_TOFPET_BARINARRAY.loc[ ~df_TOFPET_BARINARRAY['PART_BARCODE'].str.contains('-15') & ~df_TOFPET_BARINARRAY['PART_BARCODE'].str.contains('-0')]
 df_TOFPET_BARINARRAY['XT'] = (df_TOFPET_BARINARRAY['XTLEFT'] + df_TOFPET_BARINARRAY['XTRIGHT'])/2.
@@ -300,27 +311,27 @@ df_TOFPET_BARINARRAY['XT'] = (df_TOFPET_BARINARRAY['XTLEFT'] + df_TOFPET_BARINAR
 #---------------------------------------------------------
 
 dictConfig = {
-    "GALAXY_SINGLEBAR": {
-        'title'  : 'Validation of SINGLE XTAL dimensions',
-        'tag'    : ['PREIRR'],
-        'meas'   : ['L_MEAN', 'W_MEAN','T_MEAN'], #RSTD = relative standard deviation 
-        'df_meas': df_GALAXY_SINGLEBAR,
-        'summary_df_col': ['PART_BARCODE','KIND_OF_PART','NAME'],
-    },
-    "PMT_SINGLEBAR": {
-        'title'  : 'Validation of SINGLE XTAL optical properties',
-        'tag'    : ['PREIRR'],
-        'meas'   : ['LO','DT','LOoverDT','LO_RSTD','DT_RSTD','LOoverDT_RSTD'], #RSTD = relative standard deviation 
-        'df_meas': df_PMT,
-        'summary_df_col': ['PART_BARCODE','KIND_OF_PART','NAME'],
-    },
-    "GALAXY_ARRAY": {
-        'title'  : 'Validation of ARRAY dimensions',
-        'tag'    : ['PREIRR'],
-        'meas'   : ["L_MAX","LMAXVAR","W_MAX","T_MAX"], 
-        'df_meas': df_GALAXY_ARRAY,
-        'summary_df_col': ['BARCODE','KIND_OF_PART','NAME'],
-    },
+    # "GALAXY_SINGLEBAR": {
+    #     'title'  : 'Validation of SINGLE XTAL dimensions',
+    #     'tag'    : ['PREIRR'],
+    #     'meas'   : ['L_MEAN', 'W_MEAN','T_MEAN'], #RSTD = relative standard deviation 
+    #     'df_meas': df_GALAXY_SINGLEBAR,
+    #     'summary_df_col': ['PART_BARCODE','KIND_OF_PART','NAME'],
+    # },
+    # "PMT_SINGLEBAR": {
+    #     'title'  : 'Validation of SINGLE XTAL optical properties',
+    #     'tag'    : ['PREIRR'],
+    #     'meas'   : ['LO','DT','LOoverDT','LO_RSTD','DT_RSTD','LOoverDT_RSTD'], #RSTD = relative standard deviation 
+    #     'df_meas': df_PMT,
+    #     'summary_df_col': ['PART_BARCODE','KIND_OF_PART','NAME'],
+    # },
+    # "GALAXY_ARRAY": {
+    #     'title'  : 'Validation of ARRAY dimensions',
+    #     'tag'    : ['PREIRR'],
+    #     'meas'   : ["L_MAX","LMAXVAR","W_MAX","T_MAX"], 
+    #     'df_meas': df_GALAXY_ARRAY,
+    #     'summary_df_col': ['BARCODE','KIND_OF_PART','NAME'],
+    # },
     "TOFPET_ARRAY" : {
         'title'  : 'Validation of ARRAY optical properties (dry coupling)',
         'tag' : ['PREIRR','GREASE'],
@@ -328,13 +339,13 @@ dictConfig = {
         'df_meas': df_TOFPET_ARRAY,
         'summary_df_col' : ['PARENT_ARRAY','KIND_OF_PART','NAME']
     },
-    "GALAXY_BARINARRAY" : {
-        'title'  : 'Validation of XTALS IN ARRAY dimensions',
-        'tag'    : ['PREIRR'],
-        'meas'   : ["BARLENGTH"],
-        'df_meas': df_GALAXY_BARINARRAY,
-        'summary_df_col': ['PART_BARCODE','KIND_OF_PART','NAME'],
-    },    
+    # "GALAXY_BARINARRAY" : {
+    #     'title'  : 'Validation of XTALS IN ARRAY dimensions',
+    #     'tag'    : ['PREIRR'],
+    #     'meas'   : ["BARLENGTH"],
+    #     'df_meas': df_GALAXY_BARINARRAY,
+    #     'summary_df_col': ['PART_BARCODE','KIND_OF_PART','NAME'],
+    # },    
     "TOFPET_BARINARRAY" : {
         'title'  : 'Validation of XTALS IN ARRAY optical properties (dry coupling)',
         'tag' : ['PREIRR','GREASE'],
@@ -347,7 +358,7 @@ dictConfig = {
 # Measurements to be checked
 dictMeas = {
     # Single xtal dimensions 
-    "L_MEAN"   : {'db_name': 'L_MEAN'   , 'xmin':54.85, 'xmax':55.15, 'thr':[[54.97,55.03]], 'label':'Single Xtal Length'       , 'unit':'[mm]'   , 'DrawHisto' :True, 'type_group':['all']},
+    "L_MEAN"   : {'db_name': 'L_MEAN'   , 'xmin':54.85, 'xmax':55.15, 'thr':[[54.67,54.73]], 'label':'Single Xtal Length'       , 'unit':'[mm]'   , 'DrawHisto' :True, 'type_group':['all']},
     "W_MEAN"   : {'db_name': 'W_MEAN'   , 'xmin': 3.00, 'xmax': 3.24, 'thr':[[ 3.09, 3.15]], 'label':'Single Xtal Width'        , 'unit':'[mm]'   , 'DrawHisto' :True, 'type_group':['all']},
     "T_MEAN"   : {'db_name': 'T_MEAN'   , 'xmin': 2.85, 'xmax': 3.15, 'thr':[[ 2.97, 3.03]], 'label':'Single Xtal Thickness'    , 'unit':'[mm]'   , 'DrawHisto' :True, 'type_group':['all']},
    
@@ -360,15 +371,15 @@ dictMeas = {
     "LOoverDT_RSTD": {'db_name': 'LOoverDT_RSTD', 'xmin':0, 'xmax':15, 'thr':[[-1, 5]     ], 'label':'LO/DT relative std. dev.', 'unit':'(%)'        , 'DrawHisto' :False, 'type_group':['all']},
 
     # Array Dimensions
-    "L_MAX"  : {'db_name': 'L_MAX'    , 'xmin':54.75, 'xmax':55.25, 'thr':[[54.95,55.05]], 'label':'Array Length'   , 'unit':'[mm]', 'DrawHisto' :True, 'type_group':['all']},
-    "LMAXVAR": {'db_name': 'LMAXVAR'  , 'xmin': 0.00, 'xmax': 0.07, 'thr':[[-1.00, 0.05]], 'label':'Array Planarity', 'unit':'[mm]', 'DrawHisto' :True, 'type_group':['all']},
+    "L_MAX"  : {'db_name': 'L_MAX'    , 'xmin':54.75, 'xmax':55.25, 'thr':[[54.65,54.75]], 'label':'Array Length'   , 'unit':'[mm]', 'DrawHisto' :True, 'type_group':['all']},
+    "LMAXVAR": {'db_name': 'LMAXVAR'  , 'xmin': 0.00, 'xmax': 0.07, 'thr':[[-1.00, 0.06]], 'label':'Array Planarity', 'unit':'[mm]', 'DrawHisto' :True, 'type_group':['all']},
     "W_MAX"  : {'db_name': 'W_MAX'    , 'xmin':50.88, 'xmax':52.08, 'thr':[[51.38,51.58]], 'label':'Array Width'    , 'unit':'[mm]', 'DrawHisto' :True, 'type_group':['all']},
     "T_MAX"  : {'db_name': 'T_MAX'    , 'xmin': 3.91, 'xmax': 4.31, 'thr':[[ 4.01, 4.21],[ 3.26, 3.46],[ 2.66, 2.86]], 'label':'Array Thickness'     , 'unit':'[mm]', 'DrawHisto' :True, 'type_group':['1','2','3'] },
     # Bar in array optical properties
-    "BARLENGTH": {'db_name': 'BARLENGTH', 'xmin':54.85, 'xmax':55.15, 'thr':[[54.95,55.05]], 'label':'Length of Xtals in Arrays', 'unit':'[mm]', 'DrawHisto' :True, 'type_group':['all']},
+    "BARLENGTH":{'db_name':'BARLENGTH', 'xmin':54.85, 'xmax':55.15, 'thr':[[54.65,54.75]], 'label':'Length of Xtals in Arrays', 'unit':'[mm]', 'DrawHisto' :True, 'type_group':['all']},
 
     # Array optical properties
-    "LY_MEAN"  : {'db_name': 'LY_MEAN'  , 'xmin':3750 , 'xmax':7000 , 'thr':[[4000,9999999],[4000,9999999],[4000,9999999]], 'label':'Array Light Output' , 'unit':'[ph/MeV]', 'DrawHisto' :True, 'type_group':['1','2','3']},
+    "LY_MEAN"  : {'db_name': 'LY_MEAN'  , 'xmin':3750 , 'xmax':7000 , 'thr':[[4000,6000],[4000,6000],[4000,6000]], 'label':'Array Light Output' , 'unit':'[ph/MeV]', 'DrawHisto' :True, 'type_group':['1','2','3']},
     "LY_RSTD"  : {'db_name': 'LY_RSTD'  , 'xmin': 0.00, 'xmax':10.00, 'thr':[[ 0.00,  7.00],[ 0.00,  7.00],[ 0.00,  7.00]], 'label':'Light Yield RMS'    , 'unit':'(%)' , 'DrawHisto' :True, 'type_group':['1','2','3']},
     "SIGMA_T_MEAN": {'db_name':'SIGMA_T_MEAN', 'xmin':90, 'xmax':150, 'thr':[[ 0.00,140.00],[ 0.00,140.00],[ 0.00,140.00]], 'label':'Time resolution'    , 'unit':'[ps]', 'DrawHisto' :True, 'type_group':['1','2','3']},
     "SIGMA_T_RSTD": {'db_name':'SIGMA_T_RSTD', 'xmin': 0, 'xmax':10., 'thr':[[ 0.00,  6.00],[ 0.00,  6.00],[ 0.00,  6.00]], 'label':'Time resolution RMS', 'unit':'(%)' , 'DrawHisto' :True, 'type_group':['1','2','3']},
@@ -394,6 +405,7 @@ for config in dictConfig:
 
         df_meas = df_meas[ dictConfig[config]['summary_df_col'] + list(set(meas_db_names))]
         df_meas = df_meas[ df_meas['NAME'].str.contains(tag)==True ]
+        df_meas = df_meas[ df_meas['NAME'].str.contains('STP')==False ]
 
         summary_df = df_meas[ dictConfig[config]['summary_df_col'] ]
         summary_df = summary_df[ summary_df['NAME'].str.contains(tag)==True ]
@@ -428,13 +440,13 @@ for config in dictConfig:
                 if type == 'all':                
                     df_meas_filtered = df_meas
                     summary_df[f'pass_{m}_{type}'] = np.where( df_meas[m_db_name].between(thr_min,thr_max), True, False )
-                    outputfile.write(f"{xlab.ljust(25)}: min="+str(df_meas[m_db_name].min().round(3)).ljust(6)+" max="+str( df_meas[m_db_name].max().round(3)).ljust(6)
+                    outputfile.write(f"{xlab.ljust(25)}: min="+str( round(df_meas[m_db_name].min(), 3) ).ljust(6)+" max="+str( round(df_meas[m_db_name].max(),3)).ljust(6)
                                     +" ==> Pass : "+str( round(100*len(summary_df[summary_df[f'pass_{m}_{type}']==True]) / len(summary_df), 1) )+" %" )
                 else:
                     df_meas_filtered = df_meas[ df_meas['KIND_OF_PART'].str.contains(type) ]
                     summary_df[f'pass_{m}_{type}'] = np.where( ~df_meas['KIND_OF_PART'].str.contains(type) | (df_meas[m_db_name].between(thr_min,thr_max)), True, False )
-                    outputfile.write(f"{xlab.ljust(25)}: min="+str(df_meas[ df_meas['KIND_OF_PART'].str.contains(type) ][m_db_name].min().round(3)).ljust(6)
-                                    +" max="+str( df_meas[ df_meas['KIND_OF_PART'].str.contains(type) ][m_db_name].max().round(3)).ljust(6)
+                    outputfile.write(f"{xlab.ljust(25)}: min="+str( round(df_meas[ df_meas['KIND_OF_PART'].str.contains(type) ][m_db_name].min(), 3)).ljust(6)
+                                    +" max="+str( round(df_meas[ df_meas['KIND_OF_PART'].str.contains(type) ][m_db_name].max(), 3)).ljust(6)
                                     +" ==> Pass : "+str( round(100*len(summary_df[summary_df[f'pass_{m}_{type}']==True]) / len(summary_df), 1) )+" %" )
                 outputfile.write("\n")
                 
@@ -461,7 +473,7 @@ for config in dictConfig:
 
                 if thr_min > xmin:
                     histos[f'h1_{config}_{m}_{type}_{tag}'].axvline(thr_min, color='red', linestyle='--')
-                if thr_min < xmax:
+                if thr_max < xmax:
                     histos[f'h1_{config}_{m}_{type}_{tag}'].axvline(thr_max, color='red', linestyle='--')
 
                 if dictMeas[m]['DrawHisto']:

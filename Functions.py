@@ -3,6 +3,8 @@ import pandas as mypd
 import ROOT as R
 R.gROOT.SetBatch(1)
 import tdrstyle
+import numpy as np
+import os
 tdrstyle.setTDRStyle()
 
 def GetDataframe(barcode,df_input,tag,type,verbose):
@@ -82,3 +84,40 @@ def SaveHisto(histo,thrmin,thrmax):
 
     c.SaveAs(histo.GetName()+".pdf")
 
+def evaluateConversionFactors(df_PMT, df_TOFPET_ARRAY):
+
+    CF = {}
+
+    # array LY conversion factor (a.u. --> ph/MeV)
+    ly_mean_singleCrystal = df_PMT[ df_PMT['NAME'].str.contains('STP')==False ]['LO'].mean()
+    ly_mean_array = df_TOFPET_ARRAY[ df_TOFPET_ARRAY['KIND_OF_PART'].str.contains('2') ]['LY'].mean()
+    print(ly_mean_singleCrystal,ly_mean_array,ly_mean_singleCrystal / ly_mean_array)
+    CF['LY_au_to_phMev'] = ly_mean_singleCrystal / ly_mean_array
+
+    # LY, SIGMA_T conversion factors from type 1,3 to type 2 arrays
+    df_TOFPET_ARRAY_MEAN_OVER_TYPE = df_TOFPET_ARRAY.groupby(['KIND_OF_PART'], as_index=False).mean(numeric_only=True)
+    
+    for var in ['LY', 'SIGMA_T']:
+        type2_avg = df_TOFPET_ARRAY_MEAN_OVER_TYPE[ df_TOFPET_ARRAY_MEAN_OVER_TYPE['KIND_OF_PART'].str.contains('2') ].iloc[0][var]
+        for arraytype in ['1','3']:            
+            array_avg = df_TOFPET_ARRAY_MEAN_OVER_TYPE[ df_TOFPET_ARRAY_MEAN_OVER_TYPE['KIND_OF_PART'].str.contains(arraytype) ].iloc[0][var]
+            CF[f'{var}_t{arraytype}_to_t2'] = type2_avg / array_avg
+
+    return CF
+
+
+def applyConversion(df_TOFPET_ARRAY, CF):
+
+    df_TOFPET_ARRAY['LY'] = df_TOFPET_ARRAY['LY'] * CF['LY_au_to_phMev']
+                            
+    for var in ['LY', 'SIGMA_T']:
+        for arraytype in ['1','3']:
+            df_TOFPET_ARRAY[var] = np.where(df_TOFPET_ARRAY['KIND_OF_PART'].str.contains(arraytype),
+                               df_TOFPET_ARRAY[var] * CF[f'{var}_t{arraytype}_to_t2'],
+                               df_TOFPET_ARRAY[var])
+
+def oms_query(query, outputfile):
+    if os.path.isfile(outputfile):
+        os.system("rm -f "+outputfile)
+
+    os.system("python3 rhapi.py --all -f csv --url=http://localhost:8113 \""+query+"\" > "+outputfile)

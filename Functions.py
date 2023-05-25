@@ -1,11 +1,10 @@
 #------------------------------------------------------------------
-import pandas as mypd
 import ROOT as R
 R.gROOT.SetBatch(1)
 import tdrstyle
+import pandas as pd
 import numpy as np
 import os
-tdrstyle.setTDRStyle()
 
 def GetDataframe(barcode,df_input,tag,type,verbose):
 
@@ -116,8 +115,22 @@ def applyConversion(df_TOFPET_ARRAY, CF):
                                df_TOFPET_ARRAY[var] * CF[f'{var}_t{arraytype}_to_t2'],
                                df_TOFPET_ARRAY[var])
 
-def oms_query(query, outputfile):
-    if os.path.isfile(outputfile):
-        os.system("rm -f "+outputfile)
+# Load one dataframe from file
+def loadDataFrame(inputfile, set_index=''):
 
-    os.system("python3 rhapi.py --all -f csv --url=http://localhost:8113 \""+query+"\" > "+outputfile)
+    df = pd.read_csv(inputfile)
+    df.dropna(
+        axis=0,
+        how='all',
+        subset=None,
+        inplace=True
+    )
+
+    # Sort by selected column and set it as a string for further matching
+    if set_index != '':
+        df = df.sort_values(by=[set_index]) 
+        df[set_index] = df[set_index].astype(str)
+        df[set_index] = df[set_index].str.replace("\.0", "")
+
+    return df
+

@@ -3,7 +3,7 @@ import os
 import sys
 import subprocess
 
-import configs.config
+from configs import config
 
 # Default settings
 DEFAULTPORT = '8113'
@@ -43,10 +43,10 @@ def dumpAll(dirout=DEFAULTDIROUT,port=DEFAULTPORT):
 
     openTunnel()
     
-    omsData = condig.omsData
+    omsData = config.omsData
 
     for tag in omsData:
-        print(f"- retrieving data for {q}")
+        print(f"- retrieving data for {tag}")
         query = omsData[tag]['query']
         filecsv = omsData[tag]['filecsv']
         omsQuery(query, f'{dirout}/{filecsv}')

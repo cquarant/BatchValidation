@@ -15,50 +15,45 @@ pd.set_option('display.max_rows',None)
 
 import Functions as func
 
-#--- Input parameters
-tofpetNameId = "Run"
-pmtNameId = "BAR"
-singleBarGalaxyNameId = "Run"
-arrayGalaxyNameId = "Run"
-barInArrayGalaxyNameId = "Run"
-
-barInArrayId = "-"
-
-eff_PMT = 0.25
-pe_peak = 0.511 #MeV
-
 #--- DEFAULTS
-DIRCONFIG = 'configs'
-DIRDUMP = 'data'
-DIRIN   = 'data'
-DIROUT  = 'analyzed_data'
-PLOTDIR = 'plot'
+from configs.config import *
 
 #--- Options
 parser = argparse.ArgumentParser(usage="python3 Validate.py --user mtdloacsv")
-parser.add_argument('--user'    , dest='user'     , default= 'mtdloadb')
-parser.add_argument('--dumpDB'  , dest='dumpDB'   , action= 'store_true')
-parser.add_argument('--analysis', dest='analysis' , action= 'store_true')
-parser.add_argument('--evalSF'  , dest='evalSF'   , action= 'store_true')
-parser.add_argument('--applySF' , dest='applySF'  , default= 1 )
-parser.add_argument('--skipRuns', dest='skipRuns' , default= '')
+parser.add_argument('--user'    , dest='user'       , default='mtdloadb')
+parser.add_argument('--dumpDB'  , dest='dumpDB'     , action= 'store_true')
+parser.add_argument('--batch'   , dest='batch'      , default=DEFAULTBATCH)
+parser.add_argument('--dirDump' , dest='dirDump'    , default=DIRDUMP)
+parser.add_argument('--analysis', dest='analysis'   , action= 'store_true')
+parser.add_argument('--dirInA'  , dest='dirInA'     , default=DIRINANALYSIS)
+parser.add_argument('--dirOutA' , dest='dirOutA'    , default=DIROUTANALYSIS)
+parser.add_argument('--evalSF'  , dest='evalSF'     , action= 'store_true')
+parser.add_argument('--applySF' , dest='applySF'    , default= 1 )
+parser.add_argument('--skip'    , dest='skipRunFile', default= '')
+parser.add_argument('--dirInV'  , dest='dirInV'     , default=DIRINVAL)
+parser.add_argument('--dirOutV' , dest='dirOutV'    , default=DIROUTVAL)
 args = parser.parse_args()
 
-if args.applySF not in [0,1]:
+if int(args.applySF) not in [0,1]:
     print("--applySF admits only values 0 or 1. Default=1")
     exit(0)
 
 # Dump from OMS DB
 import dumper as dump
 if args.dumpDB==True:
-    dump.dumpAll()
+
+    dirout = f'{MAINDIR}/{args.dirDump}/{args.batch}'
+    dump.dumpAll(dirout=dirout, batch=args.batch)
+
 
 import analyzer 
 if args.analysis:
-    analyzer.analyzeOmsData(evalSF=args.evalSF, applySF=args.applySF, skipRuns=args.skipRuns)
+    dirInA  = f'{MAINDIR}/{args.dirInA}/{args.batch}'
+    dirOutA = f'{MAINDIR}/{args.dirOutA}/{args.batch}'
+    analyzer.analyzeOmsData(dirin=dirInA, dirout=dirOutA, evalSF=args.evalSF, applySF=int(args.applySF), skipRunFile=args.skipRunFile)
 
 import validator
-
-if not os.path.isdir(PLOTDIR):
-    os.system(f"mkdir {PLOTDIR}")
-validator.runValidation()
+dirInV  = f'{MAINDIR}/{args.dirInV}/{args.batch}'
+dirOutV = f'{MAINDIR}/{args.dirOutV}/{args.batch}'
+reportTitle = f'results_{args.batch}.txt'
+validator.runValidation(dirin=dirInV, dirout=dirOutV, outputfilename=reportTitle)

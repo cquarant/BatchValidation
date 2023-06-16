@@ -1,28 +1,27 @@
 ## Python stuff
-from array import array
 import os
-import math as mt
 import numpy as np
-import re
-import argparse
 from collections import defaultdict
 import pandas as pd
-import sys
-import subprocess
-import matplotlib as plt
+from matplotlib import pyplot as plt
+
+pd.options.mode.chained_assignment = None  # default='warn'
 
 pd.set_option('display.max_rows',3)
 
 import Functions as func
 
-#--- Set DEFAULTS
-DIRIN = 'analyzed_data'
-PLOTDIR = "plot"
-
 #--- Import configuraiton
 from configs import config
 validationSteps = config.validationSteps
 tenderSpecs = config.tenderSpecs
+correlationPairs = config.correlationPairs
+
+#--- Set DEFAULTS
+DEBUG = False
+NBIN = 30
+DEFAULTDIRIN  = f'{config.MAINDIR}/{config.DIRINVAL}/{config.DEFAULTBATCH}'
+DEFAULTDIROUT = f'{config.MAINDIR}/{config.DIROUTVAL}/{config.DEFAULTBATCH}'
 
 # Filter by run tag (row-wise) and for relevant columns
 def filterDataFrame(df_meas, columns, runtag):
@@ -60,6 +59,23 @@ def fillSummaryCol( summary_df, df_meas, meas ):
 
         return summary_df_tmp[f'pass_{m_db_name}']
 
+def automaticBinning(values, xmin, xmax):
+
+        histo_std = np.std(values)
+
+        if abs(histo_std)<0.0000000001:
+                if DEBUG:
+                        print(f'bin width = histo dev. std. = 0')
+                        print(f'Setting nbin to default ({NBIN})')
+                nbin = NBIN
+
+        elif len(values) > 5:
+                binwidth = histo_std/2
+                nbin = int( float((xmax - xmin)) / binwidth ) 
+        else:
+                nbin = max( int(len(values)/3), 30 )
+
+        return nbin
 
 def plotHistogram(stepName, meas, tag, df_meas, plotdir):
 
@@ -69,64 +85,149 @@ def plotHistogram(stepName, meas, tag, df_meas, plotdir):
         hist_fill = meas_cfg['histfill']
         hist_line = meas_cfg['histline']
 
-        for type_i,type in enumerate(meas_cfg['type_group']):
+        if meas_cfg['DrawHisto'] == 'DivideByType':
+                for type_i,type in enumerate(meas_cfg['type_group']):
 
-                if type != 'all':
-                        df_meas_by_type = df_meas[ df_meas['KIND_OF_PART'].str.contains(type) ]
-                else:
-                        df_meas_by_type = df_meas
+                        if type != 'all':
+                                df_meas_by_type = df_meas[ df_meas['KIND_OF_PART'].str.contains(type) ]
+                        else:
+                                df_meas_by_type = df_meas
+                        
+                        xmin_set = meas_cfg['xmin'][type_i]
+                        xmax_set = meas_cfg['xmax'][type_i]
+
+                        xmin = min( xmin_set, df_meas_by_type[m_db_name].min() )
+                        xmax = max( xmax_set, df_meas_by_type[m_db_name].max() )
+
+                        histo_mean = round(df_meas_by_type[m_db_name].mean(), 3)
+                        histo_std  = round(df_meas_by_type[m_db_name].std() , 3)
+
+                        nbin = automaticBinning( df_meas_by_type[m_db_name].tolist(), xmin, xmax )
+                        xlab = meas_cfg['label']+" "+meas_cfg['unit']               
+                        if type != 'all':
+                                xlab += " (type #"+type+")"
+
+
+                        # Filling Histogram
+                        histoname = f'h1_{stepName}_{m_db_name}_{type}_{tag}'
+                        histos[histoname] = df_meas_by_type.plot.hist(column=m_db_name, bins=nbin, range=[xmin,xmax], color=hist_fill, ec=hist_line)
+
+                        # t = histos[histoname].text(0.05, 0.78, f'Mean: {round(histo_mean,3)}\nStd.Dev: {round(histo_std,3)}', ha='left', rotation=0, fontsize=14, wrap=True, transform = histos[histoname].transAxes)
+                        # t.set_bbox(dict(facecolor='white', alpha=0.75, lw=0))
+
+                        # Draw Histogram
+                        histos[histoname].set_xlabel(xlab)
+                        histos[histoname].grid(True, linestyle='--', color='gray', linewidth=0.5)
+
+                        thr_min = meas_cfg['thr'][type_i][0]
+                        thr_max = meas_cfg['thr'][type_i][1]
+                        if thr_min > xmin:
+                                histos[histoname].axvline(thr_min, color='red', linestyle='--')
+                        if thr_max < xmax:
+                                histos[histoname].axvline(thr_max, color='red', linestyle='--')
+
+                        histos[histoname].get_figure().savefig(f'{plotdir}/{histoname}.png')
+
+                plt.close('all')
+        
+        elif meas_cfg['DrawHisto'] == 'Overlay':
+
+                xlab = meas_cfg['label']+" "+meas_cfg['unit']          
+
+                xmin = min( min(meas_cfg['xmin']), df_meas[m_db_name].min() )
+                xmax = max( max(meas_cfg['xmax']), df_meas[m_db_name].max() )
+
+
+                plt.figure()
+                text = ''
+                for type_i,type in enumerate(meas_cfg['type_group']):
+
+                        df_meas_by_type = df_meas      
+                        if type != 'all':
+                                df_meas_by_type = df_meas[ df_meas['KIND_OF_PART'].str.contains(type) ]
+                                                       
+                        nbin = automaticBinning( df_meas_by_type[m_db_name].tolist(), xmin, xmax )
+                        histo_mean = round(df_meas_by_type[m_db_name].mean(), 3)
+                        histo_std  = round(df_meas_by_type[m_db_name].std() , 3)
+                        text += f'Mean: {histo_mean}\nStd.Dev: {histo_std}\n'
+
+                        # Filling Histogram
+                        histoname = f'h1_{stepName}_{m_db_name}_{tag}'
+                        histos[histoname] = plt.hist(df_meas_by_type[m_db_name], range=[xmin,xmax], bins=nbin, color=hist_fill[type_i], ec=hist_line[type_i], lw=0.5, alpha=0.5,
+                                                            label=f'{meas} type {type}')
                 
-                xmin_l = meas_cfg['xmin']
-                xmax_l = meas_cfg['xmax']
-
-                if len(xmin_l)==1:
-                        xmin_set = xmin_l[0]
-                elif len(xmin_l)==len(meas_cfg['type_group']):
-                        xmin_set = xmin_l[type_i]
-                else:
-                        print(f"ERROR len(xmin list) should be 1 instead of {len(xmin_l)} or the same as type group list for {stepName}, {meas}")
-
-                if len(xmax_l)==1:
-                        xmax_set = xmax_l[0]
-                elif len(xmax_l)==len(meas_cfg['type_group']):
-                        xmax_set = xmax_l[type_i]
-                else:
-                        print(f"ERROR len(xmax list) should be 1 or the same as type group list for {stepName}")
-
-
-                xmin = min( xmin_set, df_meas_by_type[m_db_name].min() )
-                xmax = max( xmax_set, df_meas_by_type[m_db_name].max() )
-                if len(df_meas_by_type[m_db_name]) > 5:
-                        histo_std = df_meas_by_type[m_db_name].std()
-                        binwidth = histo_std/2
-                        nbin = int( float((xmax - xmin)) / binwidth ) 
-                else:
-                        nbin = max( int(len(df_meas_by_type.index)/3), 10 )
-                xlab = meas_cfg['label']+" "+meas_cfg['unit']
-
-                type = meas_cfg['type_group'][type_i]
-                
-                if type != 'all':
-                        xlab += " (type #"+type+")"
-
-                histoname = f'h1_{stepName}_{m_db_name}_{type}_{tag}'
-                # Filling Histogram
-                histos[histoname] = df_meas_by_type.plot.hist(column=m_db_name, bins=nbin, range=[xmin,xmax], color=hist_fill, ec=hist_line)
-
                 # Draw Histogram
-                histos[histoname].set_xlabel(xlab)
-                histos[histoname].grid(True, linestyle='--', color='gray', linewidth=0.5)
+                plt.xlabel(xlab)
+                plt.grid(True, linestyle='--', color='gray', linewidth=0.5)
+                plt.legend(loc='upper right')
 
-                thr_min = meas_cfg['thr'][type_i][0]
-                thr_max = meas_cfg['thr'][type_i][1]
-                if thr_min > xmin:
-                        histos[histoname].axvline(thr_min, color='red', linestyle='--')
-                if thr_max < xmax:
-                        histos[histoname].axvline(thr_max, color='red', linestyle='--')
+                for type_i,type in enumerate(meas_cfg['type_group']):
+                        thr_min = meas_cfg['thr'][type_i][0]
+                        thr_max = meas_cfg['thr'][type_i][1]
+                        if thr_min > xmin:
+                                plt.axvline(thr_min, color='red', linestyle='--')
+                        if thr_max < xmax:
+                                plt.axvline(thr_max, color='red', linestyle='--')
 
-                histos[histoname].get_figure().savefig(f'{plotdir}/{histoname}.png')
+                plt.savefig(f'{plotdir}/{histoname}_overlayed.png')
 
-        plt.pyplot.close('all')
+                plt.close('all')
+
+        elif meas_cfg['DrawHisto'] == 'Stack':
+
+                xlab = meas_cfg['label']+" "+meas_cfg['unit']          
+
+                xmin = min( min(meas_cfg['xmin']), df_meas[m_db_name].min() )
+                xmax = max( max(meas_cfg['xmax']), df_meas[m_db_name].max() )
+
+                nbin = automaticBinning( df_meas[m_db_name].tolist(), xmin, xmax )
+
+                fig = plt.figure()
+                fig, ax = plt.subplots()
+                text = ''
+                histo_values_list = []
+                labels = []
+                for type_i,type in enumerate(meas_cfg['type_group']):
+
+                        df_meas_by_type = df_meas      
+                        if type != 'all':
+                                df_meas_by_type = df_meas[ df_meas['KIND_OF_PART'].str.contains(type) ]
+
+                        histo_values_list.append(df_meas_by_type[m_db_name].tolist())
+                        labels.append(f'{meas} type {type}')
+                        histo_mean = round(df_meas_by_type[m_db_name].mean(), 2)
+                        histo_std  = round(df_meas_by_type[m_db_name].std() , 2)
+                        text += f'Mean (type {type}): {histo_mean}\nStd.Dev: {histo_std}\n'
+
+                        
+                # Filling Histogram
+                histoname = f'h1_{stepName}_{m_db_name}_{tag}'
+                histos[histoname] = plt.hist(histo_values_list, range=[xmin,xmax], bins=nbin, color=hist_fill, ec=hist_line, lw=0.5, stacked=True,
+                                                label=labels)
+                                 
+                # Draw Histogram
+                plt.xlabel(xlab)
+                plt.grid(True, linestyle='--', color='gray', linewidth=0.5)
+                plt.legend(loc='upper left')
+                # plt.legend(loc='upper right')
+
+                ax_list = fig.axes
+                # t = plt.text(0.64,0.34, text, ha='left', va='bottom', fontsize=11, rotation=0, wrap=True, transform = ax.transAxes)
+                t = plt.text(0.03,0.33, text, ha='left', va='bottom', fontsize=11, rotation=0, wrap=True, transform = ax.transAxes)
+                t.set_bbox(dict(facecolor='white', alpha=0.75, lw=0))
+
+
+                for type_i,type in enumerate(meas_cfg['type_group']):
+                        thr_min = meas_cfg['thr'][type_i][0]
+                        thr_max = meas_cfg['thr'][type_i][1]
+                        if thr_min > xmin:
+                                plt.axvline(thr_min, color='red', linestyle='--')
+                        if thr_max < xmax:
+                                plt.axvline(thr_max, color='red', linestyle='--')
+
+                plt.savefig(f'{plotdir}/{histoname}_stacked.png')
+
+                plt.close('all')
 
 
 def writeReportTXT(stepConf, tag, summary_df, outputfile):
@@ -197,7 +298,17 @@ def writeHTML(stepName, tag, plotdir):
         index.write("</html>\n")
         index.close()
 
+def correlationPlot(df1,df2,m1,m2,id1,id2):
+        
+        df_merged = pd.merge(df1, df2, how='inner', left_on=id1, right_on=id2)
+        ax1 = df.plot.scatter(x=m1, y=m2, c='DarkBlue')
 
+        # Draw Histogram
+        ax1.set_xlabel(m1)
+        ax1.set_ylabel(m2)
+        ax1.grid(True, linestyle='--', color='gray', linewidth=0.5)
+
+        ax1.get_figure().savefig(f'{PLOTDIR}/{df1}_{m1}_vs_{df2}_{m2}.png')
 
 #°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°#
 #  _    _ _______        _____ ______  _______ _______  _____   ______ #
@@ -208,11 +319,28 @@ def writeHTML(stepName, tag, plotdir):
 
 histos = {}
 summary_df = {}
-def runValidation(dirin=DIRIN,plotdir=PLOTDIR, outputfilename='results.txt'):
+def runValidation(dirin=DEFAULTDIRIN,dirout=DEFAULTDIROUT, outputfilename=f'results_{config.DEFAULTBATCH}.txt', batch=config.DEFAULTBATCH):
 
-        outputfile = open(outputfilename, 'w')
+        if not os.path.isdir(dirin):                
+                os.system(f'Missing analyzed data for {batch}. Run the analysis step:\n\tpython3 Validate.py --analysis --batch XXX')
+        if DEBUG:
+                print(f'\n Input directory {dirin}')
+
+        plotdir = f'{dirout}/{config.PLOTDIR}'
+        reportdir = f'{dirout}/{config.REPORTDIR}'
+        if not os.path.isdir(dirout):
+                os.system(f'mkdir -p {dirout}')
+                os.system(f'mkdir -p {reportdir}')
+                os.system(f'mkdir -p {plotdir}')
+
+        print('\n\n#######################################################')
+        print(f'\t Running VALIDATION for {batch}')
+
+        outputfile = open(f'{reportdir}/{outputfilename}', 'w')
         
         for stepName in validationSteps:
+
+                print(f'\n\t Validation step: {stepName}')
 
                 stepConf = validationSteps[stepName]
          
@@ -234,9 +362,9 @@ def runValidation(dirin=DIRIN,plotdir=PLOTDIR, outputfilename='results.txt'):
                         # filtering out columns not relevant for validation and filtering by run tag
                         runtag = runformat+tag
                         df_meas_filtered = filterDataFrame(df_meas, columns, runtag)
-
-                        print(df_meas_filtered)
-
+                        if DEBUG:
+                                print(df_meas)
+                                print(df_meas_filtered)
                         # Create summary dataframe (initialized)
                         summary_name = f'{stepName}_{tag}'
                         summary_df[summary_name] = df_meas_filtered[ run_info ]
@@ -249,19 +377,28 @@ def runValidation(dirin=DIRIN,plotdir=PLOTDIR, outputfilename='results.txt'):
                         # (if type_sel != None then apply only to parts of selected type)
                         for m in meas_list:
 
-                                print(f'\n\nAnalyzing {stepName}, {tag}, {m}\n\n')
-
                                 m_db_name = tenderSpecs[m]['db_name']
                                 summary_df_step[f'pass_{m_db_name}'] = fillSummaryCol( summary_df_step, df_meas_filtered, m )
 
                                 # Create and draw histogram
-                                if tenderSpecs[m]['DrawHisto'] == True:
-                                        plotHistogram(stepName, m, tag, df_meas_filtered, plotdir)
+                                plotHistogram(stepName, m, tag, df_meas_filtered, plotdir)
 
                         writeReportTXT( stepConf, tag, summary_df_step, outputfile )
 
                         # Include plots in html to be shown on browser
                         writeHTML(stepName, tag, plotdir)
+                
+                # Make correlation plot        
+                for pair in correlationPairs:
+
+                        df1 = pair['df1']
+                        m1 = pair['m1']
+                        id1 = pair['id1']
+                        df2 = pair['df2']
+                        m2 = pair['m2']
+                        id2 = pair['id2']
+
+                        correlationPlot(df1,df2,m1,m2,id1,id2)
 
         #--- Close result file
         outputfile.close()

@@ -1,7 +1,4 @@
 #------------------------------------------------------------------
-import ROOT as R
-R.gROOT.SetBatch(1)
-import tdrstyle
 import pandas as pd
 import numpy as np
 import os

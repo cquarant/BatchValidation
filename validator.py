@@ -15,7 +15,7 @@ import Functions as func
 from configs import config
 validationSteps = config.validationSteps
 tenderSpecs = config.tenderSpecs
-correlationPairs = config.correlationPairs
+#correlationPairs = config.correlationPairs
 
 #--- Set DEFAULTS
 DEBUG = False
@@ -388,17 +388,17 @@ def runValidation(dirin=DEFAULTDIRIN,dirout=DEFAULTDIROUT, outputfilename=f'resu
                         # Include plots in html to be shown on browser
                         writeHTML(stepName, tag, plotdir)
                 
-                # Make correlation plot        
-                for pair in correlationPairs:
+                # # Make correlation plot        
+                # for pair in correlationPairs:
 
-                        df1 = pair['df1']
-                        m1 = pair['m1']
-                        id1 = pair['id1']
-                        df2 = pair['df2']
-                        m2 = pair['m2']
-                        id2 = pair['id2']
+                #         df1 = pair['df1']
+                #         m1 = pair['m1']
+                #         id1 = pair['id1']
+                #         df2 = pair['df2']
+                #         m2 = pair['m2']
+                #         id2 = pair['id2']
 
-                        correlationPlot(df1,df2,m1,m2,id1,id2)
+                #         correlationPlot(df1,df2,m1,m2,id1,id2)
 
         #--- Close result file
         outputfile.close()

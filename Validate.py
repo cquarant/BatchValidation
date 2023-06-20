@@ -56,4 +56,4 @@ import validator
 dirInV  = f'{MAINDIR}/{args.dirInV}/{args.batch}'
 dirOutV = f'{MAINDIR}/{args.dirOutV}/{args.batch}'
 reportTitle = f'results_{args.batch}.txt'
-validator.runValidation(dirin=dirInV, dirout=dirOutV, outputfilename=reportTitle)
+validator.runValidation(dirin=dirInV, dirout=dirOutV, outputfilename=reportTitle, batch=args.batch)

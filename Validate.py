@@ -42,18 +42,19 @@ if int(args.applySF) not in [0,1]:
 import dumper as dump
 if args.dumpDB==True:
 
-    dirout = f'{MAINDIR}/{args.dirDump}/{args.batch}'
+    dirout = f'{MAINDIR}/{args.batch}/{args.dirDump}'
     dump.dumpAll(dirout=dirout, batch=args.batch)
 
 
 import analyzer 
 if args.analysis:
-    dirInA  = f'{MAINDIR}/{args.dirInA}/{args.batch}'
-    dirOutA = f'{MAINDIR}/{args.dirOutA}/{args.batch}'
+    dirInA  = f'{MAINDIR}/{args.batch}/{args.dirInA}'
+    dirOutA = f'{MAINDIR}/{args.batch}/{args.dirOutA}'
     analyzer.analyzeOmsData(dirin=dirInA, dirout=dirOutA, evalSF=args.evalSF, applySF=int(args.applySF), skipRunFile=args.skipRunFile)
 
 import validator
-dirInV  = f'{MAINDIR}/{args.dirInV}/{args.batch}'
-dirOutV = f'{MAINDIR}/{args.dirOutV}/{args.batch}'
+dirInV  = f'{MAINDIR}/{args.batch}/{args.dirInV}'
+dirOutV = f'{MAINDIR}/{args.batch}/{args.dirOutV}'
 reportTitle = f'results_{args.batch}.txt'
 validator.runValidation(dirin=dirInV, dirout=dirOutV, outputfilename=reportTitle, batch=args.batch)
+validator.makeCorrelationPlots(dirin=dirInV, dirout=dirOutV)

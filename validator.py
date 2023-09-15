@@ -4,10 +4,11 @@ import numpy as np
 from collections import defaultdict
 import pandas as pd
 from matplotlib import pyplot as plt
+import seaborn as sns
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
-pd.set_option('display.max_rows',3)
+# pd.set_option('display.max_rows',6)
 
 import Functions as func
 
@@ -15,7 +16,7 @@ import Functions as func
 from configs import config
 validationSteps = config.validationSteps
 tenderSpecs = config.tenderSpecs
-#correlationPairs = config.correlationPairs
+correlationPairs = config.correlationPairs
 
 #--- Set DEFAULTS
 DEBUG = False
@@ -84,6 +85,11 @@ def plotHistogram(stepName, meas, tag, df_meas, plotdir):
         m_db_name = meas_cfg['db_name']
         hist_fill = meas_cfg['histfill']
         hist_line = meas_cfg['histline']
+        
+        if 'legend_pos' in meas_cfg.keys():
+                legend_pos=meas_cfg['legend_pos']
+        else:
+                legend_pos='R'
 
         if meas_cfg['DrawHisto'] == 'DivideByType':
                 for type_i,type in enumerate(meas_cfg['type_group']):
@@ -110,10 +116,10 @@ def plotHistogram(stepName, meas, tag, df_meas, plotdir):
 
                         # Filling Histogram
                         histoname = f'h1_{stepName}_{m_db_name}_{type}_{tag}'
-                        histos[histoname] = df_meas_by_type.plot.hist(column=m_db_name, bins=nbin, range=[xmin,xmax], color=hist_fill, ec=hist_line)
+                        histos[histoname] = df_meas_by_type.plot.hist(column=m_db_name, bins=nbin, range=[xmin,xmax], color=hist_fill[type_i], ec=hist_line)
 
-                        # t = histos[histoname].text(0.05, 0.78, f'Mean: {round(histo_mean,3)}\nStd.Dev: {round(histo_std,3)}', ha='left', rotation=0, fontsize=14, wrap=True, transform = histos[histoname].transAxes)
-                        # t.set_bbox(dict(facecolor='white', alpha=0.75, lw=0))
+                        t = histos[histoname].text(0.05, 0.78, f'Mean: {round(histo_mean,3)}\nStd.Dev: {round(histo_std,3)}', ha='left', rotation=0, fontsize=14, wrap=True, transform = histos[histoname].transAxes)
+                        t.set_bbox(dict(facecolor='white', alpha=0.75, lw=0))
 
                         # Draw Histogram
                         histos[histoname].set_xlabel(xlab)
@@ -195,27 +201,33 @@ def plotHistogram(stepName, meas, tag, df_meas, plotdir):
 
                         histo_values_list.append(df_meas_by_type[m_db_name].tolist())
                         labels.append(f'{meas} type {type}')
-                        histo_mean = round(df_meas_by_type[m_db_name].mean(), 2)
-                        histo_std  = round(df_meas_by_type[m_db_name].std() , 2)
+                        histo_mean = round(df_meas_by_type[m_db_name].mean(), 3)
+                        histo_std  = round(df_meas_by_type[m_db_name].std() , 3)
                         text += f'Mean (type {type}): {histo_mean}\nStd.Dev: {histo_std}\n'
 
                         
                 # Filling Histogram
                 histoname = f'h1_{stepName}_{m_db_name}_{tag}'
-                histos[histoname] = plt.hist(histo_values_list, range=[xmin,xmax], bins=nbin, color=hist_fill, ec=hist_line, lw=0.5, stacked=True,
+                xh,yh,histos[histoname] = plt.hist(histo_values_list, range=[xmin,xmax], bins=nbin, color=hist_fill, ec=hist_line, lw=0.5, stacked=True,
                                                 label=labels)
                                  
                 # Draw Histogram
                 plt.xlabel(xlab)
                 plt.grid(True, linestyle='--', color='gray', linewidth=0.5)
-                plt.legend(loc='upper left')
-                # plt.legend(loc='upper right')
+                
+                if legend_pos == 'R':
+                        plt.legend(loc='upper right')
+                        t = plt.text(0.6,0.45, text, ha='left', va='bottom', fontsize=11, rotation=0, wrap=True, transform = ax.transAxes)
+                else:
+                        plt.legend(loc='upper left')
+                        t = plt.text(0.03,0.45, text, ha='left', va='bottom', fontsize=11, rotation=0, wrap=True, transform = ax.transAxes)
 
                 ax_list = fig.axes
-                # t = plt.text(0.64,0.34, text, ha='left', va='bottom', fontsize=11, rotation=0, wrap=True, transform = ax.transAxes)
-                t = plt.text(0.03,0.33, text, ha='left', va='bottom', fontsize=11, rotation=0, wrap=True, transform = ax.transAxes)
                 t.set_bbox(dict(facecolor='white', alpha=0.75, lw=0))
 
+                # limit y range when entry number is low
+                # if yh.max() < 3:
+                #         plt.ylim([0,3])
 
                 for type_i,type in enumerate(meas_cfg['type_group']):
                         thr_min = meas_cfg['thr'][type_i][0]
@@ -298,17 +310,37 @@ def writeHTML(stepName, tag, plotdir):
         index.write("</html>\n")
         index.close()
 
-def correlationPlot(df1,df2,m1,m2,id1,id2):
+def correlationPlot( pairName, xval, yval, xlab, ylab, plotdir, xrange, yrange ):
+        plt.scatter(xval,yval)
+
+        plt.xlabel(xlab)
+        plt.ylabel(ylab)
+        plt.grid(True, linestyle='--', color='gray', linewidth=0.5)
+
+        m, b = np.polyfit(xval, yval, 1)        
+        xseq = np.linspace(min(xval), max(xval), num=100)
+
+        from scipy.stats import pearsonr
+        corr, _ = pearsonr(xval, yval)
         
-        df_merged = pd.merge(df1, df2, how='inner', left_on=id1, right_on=id2)
-        ax1 = df.plot.scatter(x=m1, y=m2, c='DarkBlue')
+        plt.plot(xseq, b + m * xseq, color="red", lw=2.5, linestyle='--');
 
-        # Draw Histogram
-        ax1.set_xlabel(m1)
-        ax1.set_ylabel(m2)
-        ax1.grid(True, linestyle='--', color='gray', linewidth=0.5)
+        # Use plt.legend to automatically place text in plot
+        text1 = "slope: {:.3e}".format(m)
+        text2 = f"offset: {round(b,3)}"
+        text3 = f"Pears. r: {round(corr,3)}"
+        # text = text1 + '\n' + text2 + '\n' + text3
+        text = text1 + '\n' +text2+'\n' + text3
 
-        ax1.get_figure().savefig(f'{PLOTDIR}/{df1}_{m1}_vs_{df2}_{m2}.png')
+        # Create an empty plot with the required text.
+        plt.plot([], label=text)
+        plt.xlim(xrange)
+        plt.ylim(yrange)
+        # Remove the handle from the legend box.
+        plt.legend(handlelength=0)
+
+        plt.savefig(f'{plotdir}/{pairName}_correlation.png')
+        plt.close()
 
 #°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°#
 #  _    _ _______        _____ ______  _______ _______  _____   ______ #
@@ -327,17 +359,16 @@ def runValidation(dirin=DEFAULTDIRIN,dirout=DEFAULTDIROUT, outputfilename=f'resu
                 print(f'\n Input directory {dirin}')
 
         plotdir = f'{dirout}/{config.PLOTDIR}'
-        reportdir = f'{dirout}/{config.REPORTDIR}'
         if not os.path.isdir(dirout):
                 os.system(f'mkdir -p {dirout}')
-                os.system(f'mkdir -p {reportdir}')
+        if not os.path.isdir(plotdir):
                 os.system(f'mkdir -p {plotdir}')
 
         print('\n\n#######################################################')
         print(f'\t Running VALIDATION for {batch}')
 
-        outputfile = open(f'{reportdir}/{outputfilename}', 'w')
-        
+        outputfile = open(f'{dirout}/{outputfilename}', 'w')
+
         for stepName in validationSteps:
 
                 print(f'\n\t Validation step: {stepName}')
@@ -387,20 +418,64 @@ def runValidation(dirin=DEFAULTDIRIN,dirout=DEFAULTDIROUT, outputfilename=f'resu
 
                         # Include plots in html to be shown on browser
                         writeHTML(stepName, tag, plotdir)
-                
-                # # Make correlation plot        
-                # for pair in correlationPairs:
-
-                #         df1 = pair['df1']
-                #         m1 = pair['m1']
-                #         id1 = pair['id1']
-                #         df2 = pair['df2']
-                #         m2 = pair['m2']
-                #         id2 = pair['id2']
-
-                #         correlationPlot(df1,df2,m1,m2,id1,id2)
 
         #--- Close result file
         outputfile.close()
-        
 
+def makeCorrelationPlots(dirin=DEFAULTDIRIN,dirout=DEFAULTDIROUT):
+
+        corrplotdir = f'{dirout}/{config.CORRPLOTDIR}'
+        if not os.path.isdir(corrplotdir):
+                os.system(f'mkdir -p {corrplotdir}')
+
+        for pairName in correlationPairs:
+
+                print('Correlation plot: '+pairName)
+
+                pair = correlationPairs[pairName]
+                dfx = func.loadDataFrame(f'{dirin}/'+pair['dfx'])
+                dfy = func.loadDataFrame(f'{dirin}/'+pair['dfy'])
+                colx = pair['colx']+"_X"
+                coly = pair['coly']+"_Y"
+
+                if 'tag' in pair:
+                        dfx = dfx[ dfx['NAME'].str.match('.*'+pair['tag']+'$')]
+                        dfy = dfy[ dfy['NAME'].str.match('.*'+pair['tag']+'$')]
+
+                if 'tagx' in pair:
+                        dfx = dfx[ dfx['NAME'].str.match('.*'+pair['tagx']+'$')]
+                if 'tagy' in pair:
+                        dfy = dfy[ dfy['NAME'].str.match('.*'+pair['tagy']+'$')]
+                        
+                dfx = dfx.add_suffix('_X')
+                dfy = dfy.add_suffix('_Y')
+
+                # remove outlier caused by typos in STP file
+                # dfx = dfx[ abs( (dfx[colx] - dfx[colx].mean()) / dfx[colx].std() ) < 2 ]
+                # dfy = dfy[ abs( (dfy[coly] - dfy[coly].mean()) / dfy[coly].std() ) < 2 ]
+
+                df_merged = dfx.merge(dfy, how='inner', left_on='BARCODE_X', right_on='BARCODE_Y') 
+
+                
+                if pair['type'] != 'all':
+                        dfx = dfx[ dfx['KIND_OF_PART_X'].str.contains(pair['type']) ]
+                        dfy = dfy[ dfy['KIND_OF_PART_Y'].str.contains(pair['type']) ]
+
+                xmin_ = dfx[colx].min() - (dfx[colx].max()-dfx[colx].min())*0.1
+                xmax_ = dfx[colx].max() + (dfx[colx].max()-dfx[colx].min())*0.1
+                ymin_ = dfy[coly].min() - (dfy[coly].max()-dfy[coly].min())*0.1
+                ymax_ = dfy[coly].max() + (dfy[coly].max()-dfy[coly].min())*0.1
+
+                if 'xmin' in pair:
+                        xmin_ = pair['xmin']
+                if 'xmax' in pair:
+                        xmax_ = pair['xmax']
+                if 'ymin' in pair:
+                        ymin_ = pair['ymin']
+                if 'ymax' in pair:
+                        ymax_ = pair['ymax']
+
+                xrange_ = [xmin_,xmax_]
+                yrange_ = [ymin_,ymax_]
+
+                correlationPlot( pairName, df_merged[colx], df_merged[coly], xlab=pair['xlab'], ylab=pair['ylab'], plotdir=corrplotdir, xrange=xrange_, yrange=yrange_)

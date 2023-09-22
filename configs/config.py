@@ -331,7 +331,7 @@ tenderSpecs = {
 
     ## STACKED PLOTS
     # Array optical properties (dry)
-    "LY_MEAN"  : {'db_name': 'LY_MEAN'  , 'xmin':[3999], 'xmax':[6000], 'thr':[[4000,9999999],[4000,9999999],[4000,9999999]], 'label':'Array Light Output'     , 'unit':'[ph/MeV]', 'DrawHisto' :'Stack', 'type_group':['1','2','3'], 'histfill':['#ed6b7c','#9fd18a','#e5da1e'], 'histline':'black'},
+    "LY_MEAN"  : {'db_name': 'LY_MEAN'  , 'xmin':[3999], 'xmax':[6000], 'thr':[[4000,6500],[4000,9999999],[4000,9999999]], 'label':'Array Light Output'     , 'unit':'[ph/MeV]', 'DrawHisto' :'Stack', 'type_group':['1','2','3'], 'histfill':['#ed6b7c','#9fd18a','#e5da1e'], 'histline':'black'},
     #"LY_MEAN"  : {'db_name': 'LY_MEAN'  , 'xmin':[50,60,70], 'xmax':[70,80,90], 'thr':[[000,9999999],[000,9999999],[000,9999999]], 'label':'Array Light Output'   , 'unit':'[ph/MeV]', 'DrawHisto' :'DivideByType', 'type_group':['1','2','3'], 'histfill':['#ed6b7c','#9fd18a','#e5da1e'], 'histline':'black'},
     "LY_RSTD"  : {'db_name': 'LY_RSTD'  , 'xmin':[0.00], 'xmax':[10.0], 'thr':[[ 0.00,  7.00],[ 0.00,  7.00],[ 0.00,  7.00]], 'label':'Array Light Output RMS'   , 'unit':'(%)' , 'DrawHisto' :'Stack', 'type_group':['1','2','3'], 'histfill':['#ed6b7c','#9fd18a','#e5da1e'], 'histline':'black'},
     "SIGMA_T_MEAN": {'db_name':'SIGMA_T_MEAN', 'xmin':[115], 'xmax':[150], 'thr':[[0.00,140.00],[0.00,140.00],[0.00,140.00]], 'label':'Array Time resolution'    , 'unit':'[ps]', 'DrawHisto' :'Stack', 'type_group':['1','2','3'], 'histfill':['#ed6b7c','#9fd18a','#e5da1e'], 'histline':'black'},

@@ -15,6 +15,9 @@ def loadDataFrame(inputfile, set_index=''):
         inplace=True
     )
 
+    if 'NAME' in df.columns:
+        df = df[ df['NAME'].notna() ]
+
     # Sort by selected column and set it as a string for further matching
     if set_index != '':
         df = df.sort_values(by=[set_index]) 

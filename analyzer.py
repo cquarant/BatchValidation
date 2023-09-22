@@ -17,12 +17,18 @@ DEFAULTDIROUT = f'{config.MAINDIR}/{config.DIROUTANALYSIS}/{config.DEFAULTBATCH}
 
 CF = {
         'LY_au_to_phMev'   : 1, # LY conversion factor from arbitrary units to ph/Mev (needs PMT input)
-        'LY_T1_to_T2'      : 1, # LY conversion factor from type 1 to type 2 arrays
-        'LY_T3_to_T2'      : 1, # LY conversion factor from type 3 to type 2 arrays
-        'SIGMA_T_T1_to_T2' : 1, # SIGMA_T conversion factor from type 1 to type 2 arrays
-        'SIGMA_T_T3_to_T2' : 1, # SIGMA_T conversion factor from type 3 to type 2 arrays
-        'XT_T1_to_T2'      : 1, # XT conversion factor from type 1 to type 2 arrays
-        'XT_T3_to_T2'      : 1, # XT conversion factor from type 3 to type 2 arrays
+        'LY_T1_to_T2_PREIRR'      : 1, # LY conversion factor from type 1 to type 2 arrays
+        'LY_T3_to_T2_PREIRR'      : 1, # LY conversion factor from type 3 to type 2 arrays
+        'SIGMA_T_T1_to_T2_PREIRR' : 1, # SIGMA_T conversion factor from type 1 to type 2 arrays
+        'SIGMA_T_T3_to_T2_PREIRR' : 1, # SIGMA_T conversion factor from type 3 to type 2 arrays
+        'XT_T1_to_T2_PREIRR'      : 1, # XT conversion factor from type 1 to type 2 arrays
+        'XT_T3_to_T2_PREIRR'      : 1, # XT conversion factor from type 3 to type 2 arrays
+        'LY_T1_to_T2_PREIRR-GR'      : 1, # LY conversion factor from type 1 to type 2 arrays
+        'LY_T3_to_T2_PREIRR-GR'      : 1, # LY conversion factor from type 3 to type 2 arrays
+        'SIGMA_T_T1_to_T2_PREIRR-GR' : 1, # SIGMA_T conversion factor from type 1 to type 2 arrays
+        'SIGMA_T_T3_to_T2_PREIRR-GR' : 1, # SIGMA_T conversion factor from type 3 to type 2 arrays
+        'XT_T1_to_T2_PREIRR-GR'      : 1, # XT conversion factor from type 1 to type 2 arrays
+        'XT_T3_to_T2_PREIRR-GR'      : 1, # XT conversion factor from type 3 to type 2 arrays
     }
     
 #--- Set constants
@@ -31,15 +37,18 @@ pe_peak = 0.511 #MeV
 ref_ly = 687.39 / (eff_PMT*pe_peak) # ref ly [ph/MeV]
 ref_dt = 46.5 # [ns]
 
-def evaluateConversionFactors(df_PMT, df_TOFPET_ARRAY, dirout=config.DIRCONFIG):
+def evaluateConversionFactors(df_PMT, df_TOFPET_ARRAY, tag, dirout=config.DIRCONFIG):
 
 
     ### ARRAY LY CONVERSION FACTOR IN DRY COUPLING (a.u. --> ph/MeV)
     ### IMPORTANT: LY from singleBar FIXED AT AVERAGE FROM PREPRODBATCH 1
     ### In PreProdBatch2 the PMT results changed for reference bar, therefore we will keep PreProdBatch1 PMT LY as reference
-    ly_mean_array = df_TOFPET_ARRAY[ df_TOFPET_ARRAY['KIND_OF_PART'].str.contains('2') & ~df_TOFPET_ARRAY['NAME'].str.contains('STP') ]['LY'].mean()
-    ly_mean_singleCrystal = 5368.2240278485615
-    CF['LY_au_to_phMev'] = ly_mean_singleCrystal / ly_mean_array
+    
+    print(df_TOFPET_ARRAY[df_TOFPET_ARRAY['tag'].str.match(f"^{tag}$")][['PART_BARCODE','tag','LY']])
+    if tag == 'PREIRR':
+        ly_mean_array = df_TOFPET_ARRAY[ df_TOFPET_ARRAY['tag'].str.match(f"^{tag}$") & df_TOFPET_ARRAY['KIND_OF_PART'].str.contains('2') ]['LY'].mean()
+        ly_mean_singleCrystal = 5368.2240278485615
+        CF['LY_au_to_phMev'] = ly_mean_singleCrystal / ly_mean_array
     
     # UNCOMMENT following lines if you want, instead, to evaluate conversion factor using PMT measurement 
     # from the current production batch you are measuring
@@ -54,14 +63,26 @@ def evaluateConversionFactors(df_PMT, df_TOFPET_ARRAY, dirout=config.DIRCONFIG):
 
     # LY, SIGMA_T conversion factors from type 1,3 to type 2 arrays
     df_TOFPET_ARRAY_COPY = df_TOFPET_ARRAY.copy()
-    df_TOFPET_ARRAY_COPY = df_TOFPET_ARRAY_COPY[df_TOFPET_ARRAY_COPY[ 'tag'].str.match("^PREIRR$") ]
-    df_TOFPET_ARRAY_MEAN_OVER_TYPE = df_TOFPET_ARRAY_COPY.groupby(['KIND_OF_PART'], as_index=False).mean(numeric_only=True)
+    df_TOFPET_ARRAY_COPY = df_TOFPET_ARRAY_COPY[df_TOFPET_ARRAY_COPY['tag'].str.match(f"^{tag}$") ]
     
+    # Do mean over array of the same type, keeping also RefArrays as type 2
+    array_type = ['#1','#2','#3']
+    pat = '|'.join(array_type)
+    s = df_TOFPET_ARRAY_COPY['KIND_OF_PART'].str.extract('('+ pat + ')', expand=False)
+    df_TOFPET_ARRAY_MEAN_OVER_TYPE = df_TOFPET_ARRAY_COPY.groupby(s).mean().reset_index() # include RefArrays to type2
+    # df_TOFPET_ARRAY_MEAN_OVER_TYPE = df_TOFPET_ARRAY_COPY.groupby(['KIND_OF_PART'], as_index=False).mean(numeric_only=True)
+    print(df_TOFPET_ARRAY_MEAN_OVER_TYPE)
+    print(df_TOFPET_ARRAY_MEAN_OVER_TYPE[ df_TOFPET_ARRAY_MEAN_OVER_TYPE['KIND_OF_PART'].str.contains('2') ].iloc[0]['LY'])
+
     for var in ['LY', 'SIGMA_T', 'XT']:
+        print(tag)
         type2_avg = df_TOFPET_ARRAY_MEAN_OVER_TYPE[ df_TOFPET_ARRAY_MEAN_OVER_TYPE['KIND_OF_PART'].str.contains('2') ].iloc[0][var]
-        for arraytype in ['1','3']:            
-            array_avg = df_TOFPET_ARRAY_MEAN_OVER_TYPE[ df_TOFPET_ARRAY_MEAN_OVER_TYPE['KIND_OF_PART'].str.contains(arraytype) ].iloc[0][var]
-            CF[f'{var}_T{arraytype}_to_T2'] = type2_avg / array_avg
+        for arraytype in ['1','3']:
+            if not df_TOFPET_ARRAY_MEAN_OVER_TYPE[ df_TOFPET_ARRAY_MEAN_OVER_TYPE['KIND_OF_PART'].str.contains(arraytype) ].empty:  
+                array_avg = df_TOFPET_ARRAY_MEAN_OVER_TYPE[ df_TOFPET_ARRAY_MEAN_OVER_TYPE['KIND_OF_PART'].str.contains(arraytype) ].iloc[0][var]
+                CF[f'{var}_T{arraytype}_to_T2_{tag}'] = type2_avg / array_avg
+            else:
+                CF[f'{var}_T{arraytype}_to_T2_{tag}'] = 1
 
     saveConversionFactors()
 
@@ -69,6 +90,7 @@ def saveConversionFactors(dirout_=config.DIRCONFIG):
     cfFile = open(f'{dirout_}/conversionFactors.txt','w')
     print(f'Opening file: {dirout_}/conversionFactors.txt')
     for cfName in CF:
+        print(cfName, CF[cfName])
         factor = CF[cfName]
         cfFile.write(f"{cfName} {factor}"+"\n")
     cfFile.close()
@@ -95,8 +117,17 @@ def applyConversionFactors(df_TOFPET_ARRAY):
                             
     for var in ['LY', 'SIGMA_T','XT']:
         for arraytype in ['1','3']:
-            df_TOFPET_ARRAY[var] = np.where(df_TOFPET_ARRAY['KIND_OF_PART'].str.contains(arraytype),
-                               df_TOFPET_ARRAY[var] * CF[f'{var}_T{arraytype}_to_T2'],
+            df_TOFPET_ARRAY[var] = np.where(df_TOFPET_ARRAY['KIND_OF_PART'].str.contains(arraytype) & df_TOFPET_ARRAY['tag'].str.match(f"^PREIRR$"),
+                               df_TOFPET_ARRAY[var] * CF[f'{var}_T{arraytype}_to_T2_PREIRR'],
+                               df_TOFPET_ARRAY[var])
+            df_TOFPET_ARRAY[var] = np.where(df_TOFPET_ARRAY['KIND_OF_PART'].str.contains(arraytype) & df_TOFPET_ARRAY['tag'].str.match(f"^POSTIRR$"),
+                               df_TOFPET_ARRAY[var] * CF[f'{var}_T{arraytype}_to_T2_PREIRR'],
+                               df_TOFPET_ARRAY[var])
+            df_TOFPET_ARRAY[var] = np.where(df_TOFPET_ARRAY['KIND_OF_PART'].str.contains(arraytype) & df_TOFPET_ARRAY['tag'].str.match(f"^PREIRR-GR$"),
+                               df_TOFPET_ARRAY[var] * CF[f'{var}_T{arraytype}_to_T2_PREIRR-GR'],
+                               df_TOFPET_ARRAY[var])
+            df_TOFPET_ARRAY[var] = np.where(df_TOFPET_ARRAY['KIND_OF_PART'].str.contains(arraytype) & df_TOFPET_ARRAY['tag'].str.match(f"^POSTIRR-GR"),
+                               df_TOFPET_ARRAY[var] * CF[f'{var}_T{arraytype}_to_T2_PREIRR-GR'],
                                df_TOFPET_ARRAY[var])
 
 # return df with average and standard deviation of any columns with numerical values
@@ -234,7 +265,8 @@ def analyzeOmsData(dirin=DEFAULTDIRIN, dirout=DEFAULTDIROUT, evalSF=False, apply
     df['TOFPET_ARRAY'] = df['TOFPET_ARRAY'].drop(['XTLEFT','XTRIGHT'], axis='columns')
 
     if(evalSF==True):
-        evaluateConversionFactors(df['PMT'], df['TOFPET_ARRAY'])
+        for tag in ['PREIRR', 'PREIRR-GR']:
+            evaluateConversionFactors(df['PMT'], df['TOFPET_ARRAY'], tag)
     else:
         loadConversionFactors()
     if(applySF==True):
